@@ -2,3 +2,41 @@
 models
 wandb/
 logs.txt
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+.hypothesis/
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+*.egg
+wheel/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Development
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+.task-cache/

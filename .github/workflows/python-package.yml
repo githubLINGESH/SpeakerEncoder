@@ -1,40 +1,144 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# This workflow will install Python dependencies, run tests, lint with a variety of Python versions
+# and publish to PyPI on version tags
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: SpeakerEncoder
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
+    tags:
+      - 'v*'  # Publish on version tags like v0.1.0
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
+
+env:
+  PYTHON_VERSION: "3.10"
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11"]
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for versioning
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+
+    - name: Get pip cache dir
+      id: pip-cache
+      run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Upgrade pip and install build tools
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install flake8 pytest pytest-cov pytest-xdist black isort
+
+    - name: Install package dependencies
+      run: |
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      shell: bash
+
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=tests,wandb,models
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=tests,wandb,models
+
+    - name: Check code formatting with black
       run: |
-        pytest
+        black --check --diff model/ data/ train/ utils/ || true
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff model/ data/ train/ utils/ || true
+
+    - name: Pytest
+      run: |
+        pytest tests/ -v --cov=model --cov=data --cov=train --cov=utils --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  build:
+    name: Build Distribution
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel build twine
+
+    - name: Extract version from tag
+      id: version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          VERSION=$(cat version.txt)
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+
+    - name: Update version.txt
+      run: |
+        echo "${{ steps.version.outputs.version }}" > version.txt
+        cat version.txt
+
+    - name: Build distribution packages
+      run: |
+        python -m build
+
+    - name: Check distribution with twine
+      run: |
+        twine check dist/*
+
+    - name: Publish to PyPI (on version tags)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

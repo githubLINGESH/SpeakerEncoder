@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "speaker-encoder-pipeline"
+dynamic = ["version"]
+description = "Multilingual Speaker Encoder with Multi-branch Architecture for Few-shot Voice Synthesis"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["speaker-encoder", "voice-synthesis", "multilingual", "few-shot", "deep-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchaudio>=2.0.1",
+    "librosa>=0.9.0",
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0.0",
+    "tqdm>=4.60.0",
+    "wandb>=0.13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "isort>=5.0.0",
+    "mypy>=0.990",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/Zero_shotVoiceClone"
+"Bug Reports" = "https://github.com/yourusername/Zero_shotVoiceClone/issues"
+"Source Code" = "https://github.com/yourusername/Zero_shotVoiceClone"
+
+[project.scripts]
+speaker-encoder-prepare = "prepare_data:main"
+speaker-encoder-train = "train:main"
+speaker-encoder-validate = "validate_speakers:main"
+speaker-encoder-evaluate = "evaluate:main"
+
+[tool.setuptools.dynamic]
+version = {file = "version.txt"}
+
+[tool.black]
+line-length = 120
+target-version = ['py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | wandb
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+known_first_party = ["model", "data", "train", "utils"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-v --strict-markers --tb=short --disable-warnings"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow",
+    "gpu: marks tests that require GPU",
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["model", "data", "train", "utils"]
+omit = [
+    "tests/*",
+    "*/__init__.py",
+    "*/wandb/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
