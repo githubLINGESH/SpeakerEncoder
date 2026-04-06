@@ -262,7 +262,7 @@ For issues and questions:
 
 ## Changelog
 
-### Version 0.1.0 (Initial Release)
+### Version 0.1.1 (Initial Release)
 - Multi-branch speaker encoder
 - Multilingual support (English, Tamil)
 - Complete training pipeline
